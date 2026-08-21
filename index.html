@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sailing Results</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; max-width: 900px; margin: auto; background: #f8fafc; }
+    .filters { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    select, input { padding: 10px; font-size: 15px; border-radius: 6px; border: 1px solid #cbd5e1; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+    .tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .tag-year { background: #f1f5f9; color: #475569; }
+    .btn { display: inline-block; margin-top: 12px; background: #0284c7; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; text-align: center; font-weight: 500; }
+  </style>
+</head>
+<body>
+
+  <h1>Sailing Results Directory</h1>
+
+  <div class="filters">
+    <select id="eventFilter" onchange="filterCards()"><option value="all">All Event Types</option></select>
+    <select id="yearFilter" onchange="filterCards()"><option value="all">All Years</option></select>
+    <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="Search event name...">
+  </div>
+
+  <div id="cardGrid" class="grid"><p>Loading results...</p></div>
+
+  <!-- PapaParse library breaks down the CSV file automatically -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYfdGf8bh3nrxEznOQl8FBN52rvy5aw7dMVz-md5Op2FfSk1vKcjbrXIZ08jLNbrEVW4BQ_XliCijA/pub?gid=1547568537&single=true&output=csv';
+    let resultsData = [];
+
+    Papa.parse(CSV_URL, {
+      download: true,
+      header: true,
+      complete: function(results) {
+        // Map Google Sheet columns to simple variables
+        resultsData = results.data.map(row => ({
+          title: row['Event Name'] || row['Title'] || '',
+          type: row['Event Type'] || '',
+          year: row['Year'] || '',
+          url: row['Results Link'] || row['URL'] || '#'
+        })).filter(item => item.title !== '');
+
+        setupFilters(resultsData);
+        renderCards(resultsData);
+      }
+    });
+
+    function setupFilters(data) {
+      const types = [...new Set(data.map(i => i.type))].filter(Boolean);
+      const years = [...new Set(data.map(i => i.year))].filter(Boolean).sort().reverse();
+
+      types.forEach(t => document.getElementById('eventFilter').innerHTML += `<option value="${t}">${t}</option>`);
+      years.forEach(y => document.getElementById('yearFilter').innerHTML += `<option value="${y}">${y}</option>`);
+    }
+
+    function filterCards() {
+      const eVal = document.getElementById('eventFilter').value;
+      const yVal = document.getElementById('yearFilter').value;
+      const sVal = document.getElementById('searchInput').value.toLowerCase();
+
+      const filtered = resultsData.filter(item => {
+        const mEvent = (eVal === 'all' || item.type === eVal);
+        const mYear = (yVal === 'all' || item.year.toString() === yVal);
+        const mSearch = item.title.toLowerCase().includes(sVal);
+        return mEvent && mYear && mSearch;
+      });
+
+      renderCards(filtered);
+    }
+
+    function renderCards(data) {
+      const grid = document.getElementById('cardGrid');
+      if (data.length === 0) { grid.innerHTML = '<p>No matching results found.</p>'; return; }
+      
+      grid.innerHTML = data.map(item => `
+        <div class="card">
+          <div>
+            <div><span class="tag">${item.type}</span> <span class="tag tag-year">${item.year}</span></div>
+            <h3 style="margin: 12px 0 8px 0;">${item.title}</h3>
+          </div>
+          <a href="${item.url}" target="_blank" class="btn">View Results &rarr;</a>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
