@@ -28,11 +28,19 @@
     .card-title { margin: 4px 0 10px 0; font-size: 18px; font-weight: 600; line-height: 1.3; }
     .meta-info { font-size: 13px; color: #64748b; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
     
-    /* Button Layout */
-    .button-group { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-    .btn { flex: 1; text-align: center; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; transition: background 0.2s; white-space: nowrap; }
-    .btn-primary { background: #0284c7; color: white; }
-    .btn-primary:hover { background: #0369a1; }
+    /* 3-Button Layout Styling */
+    .button-group { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+    .btn { flex: 1; min-width: 80px; text-align: center; padding: 8px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; transition: all 0.2s; white-space: nowrap; }
+    
+    /* Event Page: Indigo Outline */
+    .btn-outline { background: #fff; color: #4f46e5; border: 1px solid #c7d2fe; }
+    .btn-outline:hover { background: #eef2ff; border-color: #a5b4fc; }
+
+    /* Official Results: Solid Blue */
+    .btn-primary { background: #0284c7; color: white; border: 1px solid #0284c7; }
+    .btn-primary:hover { background: #0369a1; border-color: #0369a1; }
+
+    /* Transcribed: Neutral Gray */
     .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
     .btn-secondary:hover { background: #e2e8f0; }
 
@@ -45,21 +53,9 @@
       font-size: 14px; 
       color: #64748b;
     }
-    .footer-links { 
-      display: flex; 
-      justify-content: center; 
-      gap: 20px; 
-      flex-wrap: wrap; 
-      margin-top: 8px;
-    }
-    .footer-links a { 
-      color: #0284c7; 
-      text-decoration: none; 
-      font-weight: 500;
-    }
-    .footer-links a:hover { 
-      text-decoration: underline; 
-    }
+    .footer-links { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
+    .footer-links a { color: #0284c7; text-decoration: none; font-weight: 500; }
+    .footer-links a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -107,6 +103,7 @@
           country: row['Country'] || '',
           region: row['Region/State'] || row['Region'] || '',
           club: row['Club'] || '',
+          eventUrl: row['Event Page'] || row['Event Page Link'] || '',
           officialUrl: row['Results Link'] || row['Official Results Link'] || '',
           transcribedUrl: row['Transcribed Results Link'] || row['Transcribed Link'] || ''
         })).filter(item => item.title !== '');
@@ -199,7 +196,8 @@
             </div>
             
             <div class="button-group">
-              ${item.officialUrl ? `<a href="${item.officialUrl}" target="_blank" class="btn btn-primary">Official Site &rarr;</a>` : ''}
+              ${item.eventUrl ? `<a href="${item.eventUrl}" target="_blank" class="btn btn-outline">Event Page 🔗</a>` : ''}
+              ${item.officialUrl ? `<a href="${item.officialUrl}" target="_blank" class="btn btn-primary">Official Results &rarr;</a>` : ''}
               ${item.transcribedUrl ? `<a href="${item.transcribedUrl}" target="_blank" class="btn btn-secondary">Transcribed &rarr;</a>` : ''}
             </div>
           </div>
