@@ -17,18 +17,25 @@
     .tag-season { background: #f1f5f9; color: #475569; }
     .card-title { margin: 4px 0 10px 0; font-size: 18px; font-weight: 600; line-height: 1.3; }
     .meta-info { font-size: 13px; color: #64748b; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
-    .btn { display: inline-block; margin-top: 16px; background: #0284c7; color: white; text-decoration: none; padding: 10px 14px; border-radius: 6px; text-align: center; font-weight: 500; transition: background 0.2s; }
-    .btn:hover { background: #0369a1; }
+    
+    /* Button Layout */
+    .button-group { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .btn { flex: 1; text-align: center; padding: 10px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; text-decoration: none; transition: background 0.2s; white-space: nowrap; }
+    .btn-primary { background: #0284c7; color: white; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+    .btn-secondary:hover { background: #e2e8f0; }
   </style>
 </head>
 <body>
 
   <h1>Sailing Results Directory</h1>
 
+  <!-- Reordered Filters: Tier -> Season -> Event Type -> Search -->
   <div class="filters">
-    <select id="eventFilter" onchange="filterCards()"><option value="all">All Event Types</option></select>
-    <select id="seasonFilter" onchange="filterCards()"><option value="all">All Seasons</option></select>
     <select id="tierFilter" onchange="filterCards()"><option value="all">All Tiers</option></select>
+    <select id="seasonFilter" onchange="filterCards()"><option value="all">All Seasons</option></select>
+    <select id="eventFilter" onchange="filterCards()"><option value="all">All Event Types</option></select>
     <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="Search event name...">
   </div>
 
@@ -53,7 +60,8 @@
           country: row['Country'] || '',
           region: row['Region/State'] || row['Region'] || '',
           club: row['Club'] || '',
-          url: row['Results Link'] || '#'
+          officialUrl: row['Results Link'] || row['Official Results Link'] || '',
+          transcribedUrl: row['Transcribed Results Link'] || row['Transcribed Link'] || ''
         })).filter(item => item.title !== '');
 
         setupFilters(resultsData);
@@ -61,7 +69,7 @@
       }
     });
 
-    // Custom Location logic based on Event Tier
+    // Location logic based on Event Tier
     function formatLocation(item) {
       const tier = (item.tier || '').trim().toLowerCase();
 
@@ -83,7 +91,6 @@
         return item.country || '';
       }
 
-      // Default fallback if tier is unassigned
       if (item.club) return item.club;
       if (item.region && item.country) return `${item.region}, ${item.country}`;
       return item.country || '';
@@ -98,27 +105,27 @@
     }
 
     function setupFilters(data) {
-      const types = [...new Set(data.map(i => i.type))].filter(Boolean);
-      const seasons = [...new Set(data.map(i => i.season))].filter(Boolean).sort().reverse();
       const tiers = [...new Set(data.map(i => i.tier))].filter(Boolean);
+      const seasons = [...new Set(data.map(i => i.season))].filter(Boolean).sort().reverse();
+      const types = [...new Set(data.map(i => i.type))].filter(Boolean);
 
-      types.forEach(t => document.getElementById('eventFilter').innerHTML += `<option value="${t}">${t}</option>`);
-      seasons.forEach(s => document.getElementById('seasonFilter').innerHTML += `<option value="${s}">${s}</option>`);
       tiers.forEach(tr => document.getElementById('tierFilter').innerHTML += `<option value="${tr}">${tr}</option>`);
+      seasons.forEach(s => document.getElementById('seasonFilter').innerHTML += `<option value="${s}">${s}</option>`);
+      types.forEach(t => document.getElementById('eventFilter').innerHTML += `<option value="${t}">${t}</option>`);
     }
 
     function filterCards() {
-      const eVal = document.getElementById('eventFilter').value;
-      const sVal = document.getElementById('seasonFilter').value;
       const tVal = document.getElementById('tierFilter').value;
+      const sVal = document.getElementById('seasonFilter').value;
+      const eVal = document.getElementById('eventFilter').value;
       const searchVal = document.getElementById('searchInput').value.toLowerCase();
 
       const filtered = resultsData.filter(item => {
-        const mEvent = (eVal === 'all' || item.type === eVal);
-        const mSeason = (sVal === 'all' || item.season.toString() === sVal);
         const mTier = (tVal === 'all' || item.tier === tVal);
+        const mSeason = (sVal === 'all' || item.season.toString() === sVal);
+        const mEvent = (eVal === 'all' || item.type === eVal);
         const mSearch = item.title.toLowerCase().includes(searchVal);
-        return mEvent && mSeason && mTier && mSearch;
+        return mTier && mSeason && mEvent && mSearch;
       });
 
       renderCards(filtered);
@@ -144,7 +151,11 @@
               ${locationText ? `<div class="meta-info">📍 <span>${locationText}</span></div>` : ''}
               ${dateText ? `<div class="meta-info">📅 <span>${dateText}</span></div>` : ''}
             </div>
-            <a href="${item.url}" target="_blank" class="btn">View Results &rarr;</a>
+            
+            <div class="button-group">
+              ${item.officialUrl ? `<a href="${item.officialUrl}" target="_blank" class="btn btn-primary">Official Site &rarr;</a>` : ''}
+              ${item.transcribedUrl ? `<a href="${item.transcribedUrl}" target="_blank" class="btn btn-secondary">Transcribed &rarr;</a>` : ''}
+            </div>
           </div>
         `;
       }).join('');
