@@ -3,16 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sailing Results</title>
+  <title>Sailing Results Directory</title>
   <style>
-    body { font-family: system-ui, sans-serif; padding: 20px; max-width: 900px; margin: auto; background: #f8fafc; }
+    body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 1000px; margin: auto; background: #f8fafc; color: #1e293b; }
     .filters { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
-    select, input { padding: 10px; font-size: 15px; border-radius: 6px; border: 1px solid #cbd5e1; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-    .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
-    .tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-    .tag-year { background: #f1f5f9; color: #475569; }
-    .btn { display: inline-block; margin-top: 12px; background: #0284c7; color: white; text-decoration: none; padding: 8px 12px; border-radius: 6px; text-align: center; font-weight: 500; }
+    select, input { padding: 10px 14px; font-size: 15px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .badge-container { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    .tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tag-tier { background: #fef3c7; color: #92400e; }
+    .tag-type { background: #e0f2fe; color: #0369a1; }
+    .tag-season { background: #f1f5f9; color: #475569; }
+    .card-title { margin: 4px 0 10px 0; font-size: 18px; font-weight: 600; line-height: 1.3; }
+    .meta-info { font-size: 13px; color: #64748b; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
+    .btn { display: inline-block; margin-top: 16px; background: #0284c7; color: white; text-decoration: none; padding: 10px 14px; border-radius: 6px; text-align: center; font-weight: 500; transition: background 0.2s; }
+    .btn:hover { background: #0369a1; }
   </style>
 </head>
 <body>
@@ -21,13 +27,13 @@
 
   <div class="filters">
     <select id="eventFilter" onchange="filterCards()"><option value="all">All Event Types</option></select>
-    <select id="yearFilter" onchange="filterCards()"><option value="all">All Years</option></select>
+    <select id="seasonFilter" onchange="filterCards()"><option value="all">All Seasons</option></select>
+    <select id="tierFilter" onchange="filterCards()"><option value="all">All Tiers</option></select>
     <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="Search event name...">
   </div>
 
   <div id="cardGrid" class="grid"><p>Loading results...</p></div>
 
-  <!-- PapaParse library breaks down the CSV file automatically -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYfdGf8bh3nrxEznOQl8FBN52rvy5aw7dMVz-md5Op2FfSk1vKcjbrXIZ08jLNbrEVW4BQ_XliCijA/pub?gid=1547568537&single=true&output=csv';
@@ -37,12 +43,17 @@
       download: true,
       header: true,
       complete: function(results) {
-        // Map Google Sheet columns to simple variables
         resultsData = results.data.map(row => ({
-          title: row['Event Name'] || row['Title'] || '',
+          title: row['Event Name'] || '',
+          tier: row['Event Tier'] || '',
           type: row['Event Type'] || '',
-          year: row['Year'] || '',
-          url: row['Results Link'] || row['URL'] || '#'
+          season: row['Season'] || row['Year'] || '',
+          startDate: row['Start Date'] || '',
+          endDate: row['End Date'] || '',
+          country: row['Country'] || '',
+          region: row['Region/State'] || row['Region'] || '',
+          club: row['Club'] || '',
+          url: row['Results Link'] || '#'
         })).filter(item => item.title !== '');
 
         setupFilters(resultsData);
@@ -50,24 +61,64 @@
       }
     });
 
+    // Custom Location logic based on Event Tier
+    function formatLocation(item) {
+      const tier = (item.tier || '').trim().toLowerCase();
+
+      if (tier === 'international') {
+        if (item.country && item.club) return `${item.country} – ${item.club}`;
+        return item.country || item.club || '';
+      }
+
+      if (tier === 'national') {
+        if (item.region && item.club) return `${item.region} – ${item.club}`;
+        return item.region || item.club || '';
+      }
+
+      if (tier === 'state' || tier === 'inter-club' || tier === 'club') {
+        return item.club || item.region || '';
+      }
+
+      if (tier === 'other') {
+        return item.country || '';
+      }
+
+      // Default fallback if tier is unassigned
+      if (item.club) return item.club;
+      if (item.region && item.country) return `${item.region}, ${item.country}`;
+      return item.country || '';
+    }
+
+    // Date formatting for "Start Date - End Date"
+    function formatDates(start, end) {
+      if (start && end && start !== end) return `${start} – ${end}`;
+      if (start) return start;
+      if (end) return end;
+      return '';
+    }
+
     function setupFilters(data) {
       const types = [...new Set(data.map(i => i.type))].filter(Boolean);
-      const years = [...new Set(data.map(i => i.year))].filter(Boolean).sort().reverse();
+      const seasons = [...new Set(data.map(i => i.season))].filter(Boolean).sort().reverse();
+      const tiers = [...new Set(data.map(i => i.tier))].filter(Boolean);
 
       types.forEach(t => document.getElementById('eventFilter').innerHTML += `<option value="${t}">${t}</option>`);
-      years.forEach(y => document.getElementById('yearFilter').innerHTML += `<option value="${y}">${y}</option>`);
+      seasons.forEach(s => document.getElementById('seasonFilter').innerHTML += `<option value="${s}">${s}</option>`);
+      tiers.forEach(tr => document.getElementById('tierFilter').innerHTML += `<option value="${tr}">${tr}</option>`);
     }
 
     function filterCards() {
       const eVal = document.getElementById('eventFilter').value;
-      const yVal = document.getElementById('yearFilter').value;
-      const sVal = document.getElementById('searchInput').value.toLowerCase();
+      const sVal = document.getElementById('seasonFilter').value;
+      const tVal = document.getElementById('tierFilter').value;
+      const searchVal = document.getElementById('searchInput').value.toLowerCase();
 
       const filtered = resultsData.filter(item => {
         const mEvent = (eVal === 'all' || item.type === eVal);
-        const mYear = (yVal === 'all' || item.year.toString() === yVal);
-        const mSearch = item.title.toLowerCase().includes(sVal);
-        return mEvent && mYear && mSearch;
+        const mSeason = (sVal === 'all' || item.season.toString() === sVal);
+        const mTier = (tVal === 'all' || item.tier === tVal);
+        const mSearch = item.title.toLowerCase().includes(searchVal);
+        return mEvent && mSeason && mTier && mSearch;
       });
 
       renderCards(filtered);
@@ -77,15 +128,26 @@
       const grid = document.getElementById('cardGrid');
       if (data.length === 0) { grid.innerHTML = '<p>No matching results found.</p>'; return; }
       
-      grid.innerHTML = data.map(item => `
-        <div class="card">
-          <div>
-            <div><span class="tag">${item.type}</span> <span class="tag tag-year">${item.year}</span></div>
-            <h3 style="margin: 12px 0 8px 0;">${item.title}</h3>
+      grid.innerHTML = data.map(item => {
+        const locationText = formatLocation(item);
+        const dateText = formatDates(item.startDate, item.endDate);
+
+        return `
+          <div class="card">
+            <div>
+              <div class="badge-container">
+                ${item.tier ? `<span class="tag tag-tier">${item.tier}</span>` : ''}
+                ${item.type ? `<span class="tag tag-type">${item.type}</span>` : ''}
+                ${item.season ? `<span class="tag tag-season">${item.season}</span>` : ''}
+              </div>
+              <h3 class="card-title">${item.title}</h3>
+              ${locationText ? `<div class="meta-info">📍 <span>${locationText}</span></div>` : ''}
+              ${dateText ? `<div class="meta-info">📅 <span>${dateText}</span></div>` : ''}
+            </div>
+            <a href="${item.url}" target="_blank" class="btn">View Results &rarr;</a>
           </div>
-          <a href="${item.url}" target="_blank" class="btn">View Results &rarr;</a>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
   </script>
 </body>
