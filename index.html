@@ -5,7 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sailing Results Directory</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 1000px; margin: auto; background: #f8fafc; color: #1e293b; }
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      padding: 20px 20px 0 20px; 
+      max-width: 1000px; 
+      margin: auto; 
+      background: #f8fafc; 
+      color: #1e293b; 
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-content { flex: 1; }
     .filters { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
     select, input { padding: 10px 14px; font-size: 15px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
@@ -24,21 +35,58 @@
     .btn-primary:hover { background: #0369a1; }
     .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
     .btn-secondary:hover { background: #e2e8f0; }
+
+    /* Footer Styling */
+    footer { 
+      margin-top: 40px; 
+      padding: 24px 0; 
+      border-top: 1px solid #e2e8f0; 
+      text-align: center; 
+      font-size: 14px; 
+      color: #64748b;
+    }
+    .footer-links { 
+      display: flex; 
+      justify-content: center; 
+      gap: 20px; 
+      flex-wrap: wrap; 
+      margin-top: 8px;
+    }
+    .footer-links a { 
+      color: #0284c7; 
+      text-decoration: none; 
+      font-weight: 500;
+    }
+    .footer-links a:hover { 
+      text-decoration: underline; 
+    }
   </style>
 </head>
 <body>
 
-  <h1>Sailing Results Directory</h1>
+  <div class="main-content">
+    <h1>Sailing Results Directory</h1>
 
-  <!-- Filters: Tier -> Season -> Event Type -> Search -->
-  <div class="filters">
-    <select id="tierFilter" onchange="filterCards()"><option value="all">All Tiers</option></select>
-    <select id="seasonFilter" onchange="filterCards()"><option value="all">All Seasons</option></select>
-    <select id="eventFilter" onchange="filterCards()"><option value="all">All Event Types</option></select>
-    <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="Search event name...">
+    <!-- Filters: Tier -> Season -> Event Type -> Search -->
+    <div class="filters">
+      <select id="tierFilter" onchange="filterCards()"><option value="all">All Tiers</option></select>
+      <select id="seasonFilter" onchange="filterCards()"><option value="all">All Seasons</option></select>
+      <select id="eventFilter" onchange="filterCards()"><option value="all">All Event Types</option></select>
+      <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="Search event name...">
+    </div>
+
+    <div id="cardGrid" class="grid"><p>Loading results...</p></div>
   </div>
 
-  <div id="cardGrid" class="grid"><p>Loading results...</p></div>
+  <footer>
+    <div>Useful Links</div>
+    <div class="footer-links">
+      <a href="https://hansaclass.org/" target="_blank" rel="noopener">International Hansa Class Association</a>
+      <a href="https://www.sailing.org.au/" target="_blank" rel="noopener">Australian Sailing</a>
+      <a href="https://www.aushansaclass.org.au/" target="_blank" rel="noopener">Australian Hansa Class Association</a>
+      <!-- <a href="https://sailabilitynsw.com.au/" target="_blank" rel="noopener">Sailability NSW</a> -->
+    </div>
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
