@@ -13,7 +13,6 @@
     .badge-container { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
     .tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
     .tag-tier { background: #fef3c7; color: #92400e; }
-    .tag-type { background: #e0f2fe; color: #0369a1; }
     .tag-season { background: #f1f5f9; color: #475569; }
     .card-title { margin: 4px 0 10px 0; font-size: 18px; font-weight: 600; line-height: 1.3; }
     .meta-info { font-size: 13px; color: #64748b; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
@@ -31,7 +30,7 @@
 
   <h1>Sailing Results Directory</h1>
 
-  <!-- Reordered Filters: Tier -> Season -> Event Type -> Search -->
+  <!-- Filters: Tier -> Season -> Event Type -> Search -->
   <div class="filters">
     <select id="tierFilter" onchange="filterCards()"><option value="all">All Tiers</option></select>
     <select id="seasonFilter" onchange="filterCards()"><option value="all">All Seasons</option></select>
@@ -69,7 +68,7 @@
       }
     });
 
-    // Location logic based on Event Tier
+    // Custom Location logic based on Event Tier
     function formatLocation(item) {
       const tier = (item.tier || '').trim().toLowerCase();
 
@@ -144,7 +143,6 @@
             <div>
               <div class="badge-container">
                 ${item.tier ? `<span class="tag tag-tier">${item.tier}</span>` : ''}
-                ${item.type ? `<span class="tag tag-type">${item.type}</span>` : ''}
                 ${item.season ? `<span class="tag tag-season">${item.season}</span>` : ''}
               </div>
               <h3 class="card-title">${item.title}</h3>
