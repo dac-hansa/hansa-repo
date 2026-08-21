@@ -20,29 +20,43 @@
     .filters { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
     select, input { padding: 10px 14px; font-size: 15px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    
+    /* Active Card Styling */
     .card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .badge-container { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
     .tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
     .tag-tier { background: #fef3c7; color: #92400e; }
     .tag-season { background: #f1f5f9; color: #475569; }
-    .card-title { margin: 4px 0 10px 0; font-size: 18px; font-weight: 600; line-height: 1.3; }
-    .meta-info { font-size: 13px; color: #64748b; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
+    .card-title { margin: 4px 0 10px 0; font-size: 18px; font-weight: 600; line-height: 1.3; color: #0f172a; }
+    .meta-info { font-size: 13px; color: #475569; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
     
     /* 3-Button Layout Styling */
     .button-group { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
     .btn { flex: 1; min-width: 80px; text-align: center; padding: 8px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; transition: all 0.2s; white-space: nowrap; }
     
-    /* Event Page: Indigo Outline */
     .btn-outline { background: #fff; color: #4f46e5; border: 1px solid #c7d2fe; }
     .btn-outline:hover { background: #eef2ff; border-color: #a5b4fc; }
 
-    /* Official Results: Solid Blue */
     .btn-primary { background: #0284c7; color: white; border: 1px solid #0284c7; }
     .btn-primary:hover { background: #0369a1; border-color: #0369a1; }
 
-    /* Transcribed: Neutral Gray */
     .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
     .btn-secondary:hover { background: #e2e8f0; }
+
+    /* Past Regatta Styling (WCAG Compliant Muted Colors) */
+    .card.is-past {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      box-shadow: none;
+    }
+    .card.is-past .card-title { color: #334155; }
+    .card.is-past .meta-info { color: #64748b; }
+    .card.is-past .tag-tier { background: #e2e8f0; color: #475569; }
+    .card.is-past .tag-season { background: #e2e8f0; color: #64748b; }
+    .card.is-past .btn-primary { background: #475569; border-color: #475569; color: #ffffff; }
+    .card.is-past .btn-primary:hover { background: #334155; border-color: #334155; }
+    .card.is-past .btn-outline { background: #ffffff; color: #475569; border-color: #cbd5e1; }
+    .card.is-past .btn-outline:hover { background: #e2e8f0; }
 
     /* Footer Styling */
     footer { 
@@ -89,6 +103,15 @@
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRYfdGf8bh3nrxEznOQl8FBN52rvy5aw7dMVz-md5Op2FfSk1vKcjbrXIZ08jLNbrEVW4BQ_XliCijA/pub?gid=1547568537&single=true&output=csv';
     let resultsData = [];
 
+    const TIER_ORDER = {
+      'international': 1,
+      'national': 2,
+      'state': 3,
+      'inter-club': 4,
+      'club': 5,
+      'other': 6
+    };
+
     Papa.parse(CSV_URL, {
       download: true,
       header: true,
@@ -109,11 +132,41 @@
         })).filter(item => item.title !== '');
 
         setupFilters(resultsData);
-        renderCards(resultsData);
+        filterCards();
       }
     });
 
-    // Custom Location logic based on Event Tier
+    // Check if an event ended prior to today
+    function isEventPast(endDateStr) {
+      if (!endDateStr) return false;
+      const endDate = Date.parse(endDateStr);
+      if (isNaN(endDate)) return false;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Strip time portion for fair day comparison
+      return endDate < today.getTime();
+    }
+
+    function sortResults(data) {
+      return data.sort((a, b) => {
+        const seasonA = String(a.season).trim();
+        const seasonB = String(b.season).trim();
+        if (seasonA !== seasonB) {
+          return seasonB.localeCompare(seasonA, undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        const tierA = TIER_ORDER[a.tier.trim().toLowerCase()] || 99;
+        const tierB = TIER_ORDER[b.tier.trim().toLowerCase()] || 99;
+        if (tierA !== tierB) {
+          return tierA - tierB;
+        }
+
+        const dateA = Date.parse(a.startDate) || 0;
+        const dateB = Date.parse(b.startDate) || 0;
+        return dateB - dateA;
+      });
+    }
+
     function formatLocation(item) {
       const tier = (item.tier || '').trim().toLowerCase();
 
@@ -140,7 +193,6 @@
       return item.country || '';
     }
 
-    // Date formatting for "Start Date - End Date"
     function formatDates(start, end) {
       if (start && end && start !== end) return `${start} – ${end}`;
       if (start) return start;
@@ -172,7 +224,8 @@
         return mTier && mSeason && mEvent && mSearch;
       });
 
-      renderCards(filtered);
+      const sorted = sortResults(filtered);
+      renderCards(sorted);
     }
 
     function renderCards(data) {
@@ -182,9 +235,10 @@
       grid.innerHTML = data.map(item => {
         const locationText = formatLocation(item);
         const dateText = formatDates(item.startDate, item.endDate);
+        const isPast = isEventPast(item.endDate || item.startDate);
 
         return `
-          <div class="card">
+          <div class="card ${isPast ? 'is-past' : ''}">
             <div>
               <div class="badge-container">
                 ${item.tier ? `<span class="tag tag-tier">${item.tier}</span>` : ''}
