@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hansa Racing Directory</title>
+
+  <!-- PapaParse CDN for parsing Google Sheets CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background-color: #f8f9fa;
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+
+    h1 {
+      margin-bottom: 1.5rem;
+      color: #064C87;
+      font-size: 2.25rem;
+    }
+
+    /* Controls Bar Grid */
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      background: #ffffff;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+      border: 2px solid #064C87;
+      align-items: center;
+    }
+
+    /* Standardized Form Inputs & Multiselect Button */
+    .search-box,
+    select,
+    .multiselect-btn {
+      width: 100%;
+      height: 46px;
+      padding: 0 0.85rem;
+      font-size: 0.95rem;
+      border: 2px solid #595959;
+      border-radius: 6px;
+      background-color: #ffffff;
+      color: #1a1a1a;
+      font-family: inherit;
+    }
+
+    .multiselect-btn {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .search-box:focus,
+    select:focus,
+    .multiselect-btn:focus {
+      outline: 3px solid #8e2f33;
+      outline-offset: 2px;
+      border-color: #8e2f33;
+    }
+
+    /* Multiselect Popover */
+    .multiselect-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .multiselect-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 6px;
+      background: #ffffff;
+      border: 2px solid #064C87;
+      border-radius: 6px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+      z-index: 100;
+      padding: 0.5rem;
+    }
+
+    .multiselect-dropdown.show {
+      display: block;
+    }
+
+    .multiselect-dropdown label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #2c2c2c;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .multiselect-dropdown label:hover {
+      background-color: #f0f4f8;
+    }
+
+    .multiselect-dropdown input[type="checkbox"] {
+      width: 1.1rem;
+      height: 1.1rem;
+      accent-color: #064C87;
+      cursor: pointer;
+    }
+
+    /* Directory Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* Active Event Card (Default) */
+    .card {
+      background: #ffffff;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      border: 2px solid #064C87;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card>div:first-child {
+      flex-grow: 1;
+    }
+
+    .card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.3rem;
+      color: #064C87;
+      line-height: 1.3;
+    }
+
+    .card .meta {
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.3em 0.7em;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 4px;
+      background-color: #8e2f33;
+      color: #ffffff;
+      margin-right: 0.3rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .card p {
+      margin: 0.4rem 0;
+      font-size: 0.95rem;
+      color: #2c2c2c;
+    }
+
+    /* Past Event Card Styling */
+    .card.past-event {
+      background-color: #f8f9fa;
+      border: 1px solid #ced4da;
+      box-shadow: none;
+    }
+
+    .card.past-event h3 {
+      color: #343a40;
+    }
+
+    .card.past-event .badge {
+      background-color: #e9ecef;
+      color: #495057;
+      border: 1px solid #adb5bd;
+    }
+
+    .card.cancelled-event {
+      background-color: #f8f9fa;
+      border: 1px solid #ced4da;
+    }
+
+    .card.cancelled-event h3 {
+      color: #343a40;
+    }
+
+    .badge-cancelled {
+      display: inline-block;
+      padding: 0.3em 0.7em;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 4px;
+      background-color: #d9534f;
+      color: #ffffff;
+      margin-right: 0.3rem;
+      margin-bottom: 0.3rem;
+    }
+
+    /* Action Links & Buttons */
+    .links {
+      margin-top: 1rem;
+      padding-top: 0.8rem;
+      border-top: 2px solid #e2e8f0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      text-decoration: none !important;
+      transition: background-color 0.15s ease-in-out;
+    }
+
+    .btn-link.btn-event-page {
+      background-color: #064C87;
+      color: #ffffff;
+      border: 1px solid #064C87;
+    }
+
+    .btn-link.btn-event-page:hover {
+      background-color: #04335c;
+    }
+
+    .btn-link.btn-transcribed {
+      background-color: #8e2f33;
+      color: #ffffff;
+      border: 1px solid #8e2f33;
+    }
+
+    .btn-link.btn-transcribed:hover {
+      background-color: #6e2226;
+    }
+
+    .btn-link.btn-neutral {
+      background-color: #343a40;
+      color: #ffffff;
+      border: 1px solid #343a40;
+    }
+
+    .btn-link.btn-neutral:hover {
+      background-color: #212529;
+    }
+
+    /* Muted buttons for past events */
+    .card.past-event .btn-link {
+      background-color: #e9ecef;
+      color: #495057;
+      border: 1px solid #ced4da;
+    }
+
+    .card.past-event .btn-link:hover {
+      background-color: #dee2e6;
+      color: #212529;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Hansa Racing Directory</h1>
+
+  <!-- Filter Controls -->
+  <div class="controls">
+    <select id="tierFilter" onchange="applyFilters()">
+      <option value="">All Tiers</option>
+    </select>
+    <select id="seasonFilter" onchange="applyFilters()">
+      <option value="">All Seasons</option>
+    </select>
+    <select id="typeFilter" onchange="applyFilters()">
+      <option value="">All Types</option>
+    </select>
+
+    <!-- Compact Multiselect Dropdown -->
+    <div class="multiselect-container" id="resourceMultiselect">
+      <button type="button" class="multiselect-btn" onclick="toggleResourceDropdown(event)">
+        <span id="multiselectLabel">All Documents / Links</span>
+        <span class="arrow">▾</span>
+      </button>
+      <div class="multiselect-dropdown" id="resourceDropdown">
+        <label><input type="checkbox" class="resource-cb" value="event_page" onchange="applyFilters()"> Event
+          Page</label>
+        <label><input type="checkbox" class="resource-cb" value="nor" onchange="applyFilters()"> Notice of Race</label>
+        <label><input type="checkbox" class="resource-cb" value="si" onchange="applyFilters()"> Sailing
+          Instructions</label>
+        <label><input type="checkbox" class="resource-cb" value="official_results" onchange="applyFilters()"> Official
+          Results</label>
+        <label><input type="checkbox" class="resource-cb" value="transcribed_results" onchange="applyFilters()">
+          Transcribed Results</label>
+        <label><input type="checkbox" class="resource-cb" value="pdf_results" onchange="applyFilters()"> Results
+          (PDF)</label>
+      </div>
+    </div>
+
+    <input type="text" id="search" class="search-box" placeholder="Search events, hosts, locations..."
+      oninput="applyFilters()">
+  </div>
+
+  <div id="directory" class="grid">
+    <p>Loading entries...</p>
+  </div>
+
+  <script>
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS96KbaibKB_c0AtqVpV7O5y8IW5vLVdC_Q5K7o3xY8meOjFyGmGMXS_wwvwnyvoyi-54zvFD0L923t/pub?gid=632386741&single=true&output=csv';
+
+    let directoryData = [];
+
+    function fetchDirectoryData() {
+      Papa.parse(SHEET_CSV_URL, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function (results) {
+          directoryData = results.data;
+          populateFilterDropdowns(directoryData);
+          readUrlParameters();
+          applyFilters();
+        },
+        error: function () {
+          document.getElementById('directory').innerHTML = '<p>Error loading directory data. Make sure SHEET_CSV_URL is set correctly.</p>';
+        }
+      });
+    }
+
+    function populateFilterDropdowns(data) {
+      const tiers = new Set();
+      const types = new Set();
+      const seasons = new Set();
+
+      data.forEach(item => {
+        if (item['Event Tier']) tiers.add(item['Event Tier'].trim());
+        if (item['Event Type']) types.add(item['Event Type'].trim());
+        if (item['Season']) seasons.add(item['Season'].trim());
+      });
+
+      const tierHierarchy = ['International', 'Regional', 'National', 'State', 'Inter-club', 'Club', 'Other'];
+
+      const sortedTiers = Array.from(tiers).sort((a, b) => {
+        let indexA = tierHierarchy.indexOf(a);
+        let indexB = tierHierarchy.indexOf(b);
+        if (indexA === -1) indexA = 99;
+        if (indexB === -1) indexB = 99;
+        return indexA - indexB;
+      });
+
+      const sortedSeasons = Array.from(seasons).sort((a, b) => b.localeCompare(a));
+      const sortedTypes = Array.from(types).sort((a, b) => a.localeCompare(b));
+
+      fillSelect('tierFilter', sortedTiers);
+      fillSelect('seasonFilter', sortedSeasons);
+      fillSelect('typeFilter', sortedTypes);
+    }
+
+    function fillSelect(elementId, sortedValues) {
+      const select = document.getElementById(elementId);
+      select.innerHTML = select.options[0].outerHTML;
+
+      sortedValues.forEach(val => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = val;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderDirectory(items) {
+      const container = document.getElementById('directory');
+      container.innerHTML = '';
+
+      if (items.length === 0) {
+        container.innerHTML = '<p>No matching entries found.</p>';
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      items.forEach(item => {
+        if (!item['Event Name']) return;
+
+        const rawName = item['Event Name'];
+        const isCancelled = rawName.toUpperCase().includes('CANCELLED');
+        const isPast = isCancelled || isEventPast(item['End Date'], today);
+
+        let cleanTitle = rawName;
+        let cancelReason = '';
+
+        if (isCancelled) {
+          const reasonMatch = rawName.match(/\[CANCELLED\s*-\s*(.*?)\]/i);
+          cancelReason = reasonMatch ? reasonMatch[1] : 'COVID';
+          cleanTitle = rawName.replace(/\[CANCELLED\s*-\s*.*?\]/i, '').trim();
+        }
+
+        const card = document.createElement('div');
+        card.className = `card${isPast ? ' past-event' : ''}${isCancelled ? ' cancelled-event' : ''}`;
+
+        const detailsHtml = isCancelled
+          ? `<p><strong>Cancellation Reason:</strong> ${cancelReason}</p>`
+          : `
+          <p><strong>Dates:</strong> ${item['Start Date'] || 'N/A'} - ${item['End Date'] || 'N/A'}</p>
+          <p><strong>Location:</strong> ${item['Suburb'] ? item['Suburb'] + ', ' : ''}${item['Country'] || 'N/A'}</p>
+          <p><strong>Host:</strong> ${item['Host'] || 'N/A'}</p>
+        `;
+
+        function getField(...keys) {
+          for (let key of keys) {
+            if (item[key] && typeof item[key] === 'string' && item[key].trim().startsWith('http')) {
+              return item[key];
+            }
+          }
+          return '';
+        }
+
+        const eventPageUrl = getField('Event page', 'Event Page', 'Website');
+        const officialResultsUrl = getField('Official Results', 'Official Results Link');
+        const transcribedUrl = getField('Transcribed Results', 'Transcribed Results Link');
+        const norUrl = getField('Notice Of Race', 'PDF Notice Of Race', 'Notice of Race', 'NOR');
+        const pdfResultsUrl = getField('PDF Official Results', 'Official Results (PDF)', 'PDF Results');
+        const siUrl = getField('Sailing Instructions', 'PDF Sailing Instructions', 'Sailing Instructions (PDF)', 'SI');
+
+        card.innerHTML = `
+        <div>
+          <h3>${cleanTitle}</h3>
+          <div class="meta">
+            ${isCancelled ? `<span class="badge-cancelled">CANCELLED</span>` : ''}
+            ${item['Event Tier'] ? `<span class="badge">${item['Event Tier']}</span>` : ''}
+            ${item['Season'] ? `<span class="badge">${item['Season']}</span>` : ''}
+          </div>
+          ${detailsHtml}
+        </div>
+        <div class="links">
+          ${createLink(eventPageUrl, 'Event Page', 'event-page')}
+          ${createLink(officialResultsUrl, 'Official Results', 'neutral')}
+          ${createLink(transcribedUrl, 'Transcribed Results', 'transcribed')}
+          ${createLink(norUrl, 'Notice Of Race', 'neutral')}
+          ${createLink(pdfResultsUrl, 'Results (PDF)', 'neutral')}
+          ${createLink(siUrl, 'Sailing Instructions', 'neutral')}
+        </div>
+      `;
+        container.appendChild(card);
+      });
+    }
+
+    function isEventPast(endDateStr, today) {
+      if (!endDateStr || !endDateStr.trim()) return false;
+
+      let endDate;
+      const cleanStr = endDateStr.trim();
+
+      if (cleanStr.includes('/')) {
+        const parts = cleanStr.split('/');
+        if (parts.length === 3) {
+          endDate = new Date(parts[2], parts[1] - 1, parts[0]);
+        }
+      } else {
+        endDate = new Date(cleanStr);
+      }
+
+      if (!endDate || isNaN(endDate.getTime())) return false;
+      return endDate < today;
+    }
+
+    function createLink(url, label, type = 'neutral') {
+      if (!url || typeof url !== 'string') return '';
+
+      const cleanUrl = url.trim();
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) return '';
+
+      let icon = ' ↗';
+      let btnClass = 'btn-neutral';
+      let extraAttrs = 'target="_blank" rel="noopener"';
+
+      if (type === 'event-page') {
+        btnClass = 'btn-event-page';
+      } else if (type === 'transcribed') {
+        btnClass = 'btn-transcribed';
+      } else {
+        btnClass = 'btn-neutral';
+      }
+
+      return `<a href="${cleanUrl}" ${extraAttrs} class="btn-link ${btnClass}">${label}${icon}</a>`;
+    }
+
+    function readUrlParameters() {
+      const urlParams = new URLSearchParams(window.location.search);
+
+      const tierParam = urlParams.get('tier');
+      const seasonParam = urlParams.get('season');
+      const typeParam = urlParams.get('type');
+      const resourcesParam = urlParams.get('resources');
+      const searchParam = urlParams.get('search');
+
+      if (tierParam) document.getElementById('tierFilter').value = tierParam;
+      if (seasonParam) document.getElementById('seasonFilter').value = seasonParam;
+      if (typeParam) document.getElementById('typeFilter').value = typeParam;
+      if (searchParam) document.getElementById('search').value = searchParam;
+
+      if (resourcesParam) {
+        const selectedList = resourcesParam.split(',');
+        document.querySelectorAll('.resource-cb').forEach(cb => {
+          if (selectedList.includes(cb.value)) {
+            cb.checked = true;
+          }
+        });
+      }
+    }
+
+    function applyFilters() {
+      updateMultiselectLabel();
+
+      const query = document.getElementById('search').value.toLowerCase();
+      const selectedTier = document.getElementById('tierFilter').value;
+      const selectedType = document.getElementById('typeFilter').value;
+      const selectedSeason = document.getElementById('seasonFilter').value;
+
+      const checkedResources = Array.from(document.querySelectorAll('.resource-cb:checked')).map(cb => cb.value);
+
+      const urlParams = new URLSearchParams();
+      if (selectedTier) urlParams.set('tier', selectedTier);
+      if (selectedSeason) urlParams.set('season', selectedSeason);
+      if (selectedType) urlParams.set('type', selectedType);
+      if (checkedResources.length > 0) urlParams.set('resources', checkedResources.join(','));
+      if (query) urlParams.set('search', query);
+
+      const newRelativePathQuery = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState(null, '', newRelativePathQuery);
+
+      const hasValidLink = (item, ...keys) => keys.some(key => item[key] && typeof item[key] === 'string' && item[key].trim().startsWith('http'));
+
+      const filtered = directoryData.filter(item => {
+        const matchesSearch = Object.values(item).some(val => String(val).toLowerCase().includes(query));
+        const matchesTier = !selectedTier || (item['Event Tier'] && item['Event Tier'].trim() === selectedTier);
+        const matchesType = !selectedType || (item['Event Type'] && item['Event Type'].trim() === selectedType);
+        const matchesSeason = !selectedSeason || (item['Season'] && item['Season'].trim() === selectedSeason);
+
+        const matchesResources = checkedResources.every(resource => {
+          if (resource === 'nor') return hasValidLink(item, 'Notice Of Race', 'PDF Notice Of Race', 'Notice of Race', 'NOR');
+          if (resource === 'si') return hasValidLink(item, 'Sailing Instructions', 'PDF Sailing Instructions', 'Sailing Instructions (PDF)', 'SI');
+          if (resource === 'official_results') return hasValidLink(item, 'Official Results', 'Official Results Link');
+          if (resource === 'transcribed_results') return hasValidLink(item, 'Transcribed Results', 'Transcribed Results Link');
+          if (resource === 'pdf_results') return hasValidLink(item, 'PDF Official Results', 'Official Results (PDF)', 'PDF Results');
+          if (resource === 'event_page') return hasValidLink(item, 'Event page', 'Event Page', 'Website');
+          return true;
+        });
+
+        return matchesSearch && matchesTier && matchesType && matchesSeason && matchesResources;
+      });
+
+      renderDirectory(filtered);
+    }
+
+    function toggleResourceDropdown(event) {
+      event.stopPropagation();
+      document.getElementById('resourceDropdown').classList.toggle('show');
+    }
+
+    document.addEventListener('click', function (e) {
+      const container = document.getElementById('resourceMultiselect');
+      if (container && !container.contains(e.target)) {
+        document.getElementById('resourceDropdown').classList.remove('show');
+      }
+    });
+
+    function updateMultiselectLabel() {
+      const checked = document.querySelectorAll('.resource-cb:checked');
+      const label = document.getElementById('multiselectLabel');
+
+      if (checked.length === 0) {
+        label.textContent = 'All Documents / Links';
+      } else if (checked.length === 1) {
+        label.textContent = checked[0].parentElement.textContent.trim();
+      } else {
+        label.textContent = `${checked.length} Links Selected`;
+      }
+    }
+
+    fetchDirectoryData();
+  </script>
+</body>
+
+</html>
